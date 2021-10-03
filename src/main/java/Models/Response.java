@@ -10,6 +10,6 @@ import java.util.Map;
 public class Response {
     private String statusText;
     private int statusCode;
-    private Map<String, List<String>> headers;
+    private Map<String, String> headers;
     private String payload;
 }

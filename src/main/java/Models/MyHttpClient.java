@@ -4,50 +4,65 @@ import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class MyHttpClient implements HttpClient {
 
 
-    private String headersToString(Map<String,String> headers)
-    {
-        String result="";
-        for (Map.Entry<String, String> header : headers.entrySet()) {
-            result=result+header.getKey()+": "+header.getValue()+"\r\n";
-        }
-        return result;
-    }
-    @Override
-    public Response get(String urlString, Map<String, String> headers) {
-        Response response=new Response();
+    private Response request(String urlString, Map<String, String> headers, String type, String payload) {
+        Response response = new Response();
+
+
         try {
-            URL url=new URL(urlString);
-            try{
-                HttpURLConnection connection=(HttpURLConnection)url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("Accept", "text/html");
-                //connection.connect();
+            URL url = new URL(urlString);
+            try {
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod(type);
+                //connection.setRequestProperty("Accept", "text/html");
+                for (Map.Entry<String, String> headerEntry : headers.entrySet()) {
+                    connection.setRequestProperty(headerEntry.getKey(), headerEntry.getValue());
+                }
+                if (payload != null) {
+
+                    connection.setDoOutput(true);
+
+                    try (OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream())) {
+                        writer.write(payload);
+
+                    }
+                }
+                if (type.equals("DELETE"))
+                    connection.connect();
+
+
                 response.setStatusCode(connection.getResponseCode());
                 response.setStatusText(connection.getResponseMessage());
-                response.setHeaders(connection.getHeaderFields());
+                Map<String, List<String>> res = connection.getHeaderFields();
+                Map<String, String> resultHeadersMap = new HashMap<>();
+                for (Map.Entry<String, List<String>> entryHeader : res.entrySet()) {
+                    resultHeadersMap.put(entryHeader.getKey(), entryHeader.getValue().get(0));
+                }
+                response.setHeaders(resultHeadersMap);
 
-                Scanner sc=new Scanner(connection.getInputStream());
 
                 BufferedReader bufferedReader = null;
-                if (connection.getResponseCode()>=100 && connection.getResponseCode() <= 399) {
+                if (connection.getResponseCode() >= 100 && connection.getResponseCode() <= 399) {
                     bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                 } else {
                     bufferedReader = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
                 }
-                String payload=null;
-                String output;
-                while ((output = bufferedReader.readLine()) != null) {
-                    payload+="\n"+output;
+
+                String payloadLine;
+                StringBuilder receivedPayload = new StringBuilder();
+                while ((payloadLine = bufferedReader.readLine()) != null) {
+                    receivedPayload.append("\n");
+                    receivedPayload.append(payloadLine);
+
                 }
-                response.setPayload(payload);
+                response.setPayload(receivedPayload.toString());
 
 
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         } catch (MalformedURLException e) {
@@ -56,128 +71,54 @@ public class MyHttpClient implements HttpClient {
 
 
         return response;
+
     }
 
 
+    @Override
+    public Response get(String urlString, Map<String, String> headers) {
+
+
+        return request(urlString,headers,"GET",null);
+    }
 
 
     @Override
     public Response post(String urlString, Map<String, String> headers, byte[] payload) {
 
-        Response response=new Response();
-        try {
-            URL url=new URL(urlString);
-            try{
-                HttpURLConnection connection=(HttpURLConnection)url.openConnection();
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type", "text/html");
-
-
-                connection.setDoOutput(true);
-                try(OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream())) {
-                    writer.write(payload.toString());
-                }
-
-                response.setStatusCode(connection.getResponseCode());
-                response.setStatusText(connection.getResponseMessage());
-                response.setHeaders(connection.getHeaderFields());
-
-                Scanner sc=new Scanner(connection.getInputStream());
-
-                BufferedReader bufferedReader = null;
-                if (connection.getResponseCode()>=100 && connection.getResponseCode() <= 399) {
-                    bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                } else {
-                    bufferedReader = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
-                }
-                String inputPayload=null;
-                String output;
-                while ((output = bufferedReader.readLine()) != null) {
-                    inputPayload+="\n"+output;
-                }
-                response.setPayload(inputPayload);
-
-
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
-
-
-        return response;
+        return request(urlString,headers,"POST",payload.toString());
 
     }
 
     @Override
     public Response post(String urlString, Map<String, String> headers, String payload) {
-        Response response=new Response();
-        try {
-            URL url=new URL(urlString);
-            try{
-                HttpURLConnection connection=(HttpURLConnection)url.openConnection();
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type", "text/html");
+        return request(urlString,headers,"POST",payload);
+    }
 
+    @Override
+    public Response put(String urlString, Map<String, String> headers, byte[] payload) {
+        return request(urlString,headers,"PUT",payload.toString());
 
-                connection.setDoOutput(true);
-                try(OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream())) {
-                    writer.write(payload);
-                }
+    }
 
+    @Override
+    public Response put(String urlString, Map<String, String> headers, String payload) {
 
-                response.setStatusCode(connection.getResponseCode());
-                response.setStatusText(connection.getResponseMessage());
-                response.setHeaders(connection.getHeaderFields());
+        return request(urlString,headers,"PUT",payload);
 
-                Scanner sc=new Scanner(connection.getInputStream());
+    }
 
-                BufferedReader bufferedReader = null;
-                if (connection.getResponseCode()>=100 && connection.getResponseCode() <= 399) {
-                    bufferedReader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                } else {
-                    bufferedReader = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
-                }
-                String inputPayload=null;
-                String output;
-                while ((output = bufferedReader.readLine()) != null) {
-                    inputPayload+="\n"+output;
-                }
-                response.setPayload(inputPayload);
-
-
-            }
-            catch (IOException e) {
-                e.printStackTrace();
-            }
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
+    @Override
+    public Response delete(String urlString, Map<String, String> headers, byte[] payload) {
+        return request(urlString,headers,"DELETE",payload.toString());
         }
 
 
-        return response;
-
-    }
+    
 
     @Override
-    public Response put(String url, Map<String, String> headers, byte[] payload) {
-        return null;
-    }
+    public Response delete(String urlString, Map<String, String> headers, String payload) {
+        return request(urlString,headers,"DELETE",payload);
 
-    @Override
-    public Response put(String url, Map<String, String> headers, String payload) {
-        return null;
-    }
-
-    @Override
-    public Response delete(String url, Map<String, String> headers, byte[] payload) {
-        return null;
-    }
-
-    @Override
-    public Response delete(String url, Map<String, String> headers, String payload) {
-        return null;
     }
 }
