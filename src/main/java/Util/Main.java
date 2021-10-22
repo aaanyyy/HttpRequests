@@ -15,15 +15,30 @@ import java.util.Scanner;
 public class Main {
     public static void main(String[] args) {
         MyHttpClient myHttpClient=new MyHttpClient();
+        AsyncRequest asyncRequest=new AsyncRequest(myHttpClient,
+                 result-> System.out.println(result.getPayload())) {
+            @Override
+            public Response doAsync() {
+                Response response=myHttpClient.get(
+                        "http://www.google.com",
+                        Map.of("Host","www.google.com"));
 
-        Response response=myHttpClient.get(
-                "http://www.google.com",
 
-                Map.of("Host","www.google.com")
+                return response;
+            }
+        };
+        asyncRequest.start();
+        for(int i=0;i<10;i++)
+        {
+            System.out.println(i+"\n");
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 
-        );
-        String str=response.getPayload();
-        System.out.println(str);
+
 
         /*List<Contact> Contacts=new ArrayList<>();
         Contact C1=new Contact().setName("Andrey").setPhone("111-11-11");
